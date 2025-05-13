@@ -1,58 +1,72 @@
 import numpy as np
-import time
+from time import perf_counter
 
-# 1. Generar el vector VACUNAS con 5800 DNIs aleatorios entre 50 y 80 millones
-def generar_vector_vacunas_np():
-    return np.random.choice(np.arange(50_000_000, 80_000_000), size=5800, replace=False)
 
-# 2.1 Búsqueda lineal sin ordenar
-def buscar_lineal_np(vector, dni):
-    return dni in vector
+# Paso 1: Generar los 5800 DNIs únicos y un año de vacunación aleatorio entre 2015 y 2025
+dni = np.random.choice(range(50000000, 80000000), 5800, replace=False)
+anios = np.random.randint(2015, 2026, 5800)
 
-# 2.2 Ordenamiento y búsqueda binaria con NumPy
-def ordenar_vector_np(vector):
-    return np.sort(vector)
+# Paso 2: Elegir un DNI real para probar la búsqueda
+indice_prueba = 5799  # puede ser cualquier índice entre 0 y 5799
+dni_a_buscar = dni[indice_prueba]
+print(f"\n🔍 Vamos a buscar el DNI: {dni_a_buscar} (vacunado en {anios[indice_prueba]})\n")
 
-def buscar_binaria_np(vector_ordenado, dni):
-    indice = np.searchsorted(vector_ordenado, dni)
-    return indice < len(vector_ordenado) and vector_ordenado[indice] == dni
+# Paso 3: Buscar sin ordenar (búsqueda secuencial)
+inicio1 = perf_counter()
+encontrado = False
+for i in range(len(dni)):
+    if dni[i] == dni_a_buscar:
+        anio_vacunacion = anios[i]
+        encontrado = True
+        break
+fin1 = perf_counter()
 
-# 3. Comparación de eficiencia
-def comparar_busquedas_np(vacunas, dni_a_buscar):
-    print("DNI a verificar:", dni_a_buscar)
+if encontrado:
+    if (2025 - anio_vacunacion) >= 5:
+        print("✅ Búsqueda secuencial: Se debe vacunar.")
+    else:
+        print("⛔ Búsqueda secuencial: Aún no le toca vacunarse.")
+else:
+    print("❌ Búsqueda secuencial: DNI no encontrado.")
 
-    # Búsqueda lineal
-    inicio_lineal = time.time()
-    encontrado_lineal = buscar_lineal_np(vacunas, dni_a_buscar)
-    fin_lineal = time.time()
+print(f"Tiempo búsqueda sin ordenar: {fin1 - inicio1:.6f} segundos\n")
 
-    # Ordenamiento + búsqueda binaria
-    inicio_ordenamiento = time.time()
-    vacunas_ordenadas = ordenar_vector_np(vacunas)
-    fin_ordenamiento = time.time()
+# Paso 4: Ordenar con burbuja (ordenamos DNI y también el año en paralelo)
+# Copiamos los vectores para no modificar los originales
+dni_ordenado = dni.copy()
+anios_ordenado = anios.copy()
 
-    inicio_binaria = time.time()
-    encontrado_binaria = buscar_binaria_np(vacunas_ordenadas, dni_a_buscar)
-    fin_binaria = time.time()
+# Ordenamiento burbuja
+for i in range(len(dni_ordenado)):
+    for j in range(len(dni_ordenado) - i - 1):
+        if dni_ordenado[j] > dni_ordenado[j + 1]:
+            # Intercambiar en ambos vectores
+            dni_ordenado[j], dni_ordenado[j + 1] = dni_ordenado[j + 1], dni_ordenado[j]
+            anios_ordenado[j], anios_ordenado[j + 1] = anios_ordenado[j + 1], anios_ordenado[j]
 
-    # Resultados
-    print("\n--- Resultados ---")
-    print("Búsqueda Lineal:")
-    print("  Encontrado:", encontrado_lineal)
-    print("  Tiempo:", round(fin_lineal - inicio_lineal, 6), "segundos")
+# Paso 5: Búsqueda binaria
+inicio2 = perf_counter()
+inf = 0
+sup = len(dni_ordenado) - 1
+encontrado = False
 
-    print("\nOrdenamiento + Búsqueda Binaria:")
-    print("  Encontrado:", encontrado_binaria)
-    print("  Tiempo de ordenamiento:", round(fin_ordenamiento - inicio_ordenamiento, 6), "segundos")
-    print("  Tiempo de búsqueda binaria:", round(fin_binaria - inicio_binaria, 6), "segundos")
-    print("  Tiempo total:", round((fin_binaria - inicio_ordenamiento), 6), "segundos")
+while inf <= sup and not encontrado:
+    medio = (inf + sup) // 2
+    if dni_ordenado[medio] == dni_a_buscar:
+        anio_vacunacion = anios_ordenado[medio]
+        encontrado = True
+    elif dni_ordenado[medio] > dni_a_buscar:
+        sup = medio - 1
+    else:
+        inf = medio + 1
+fin2 = perf_counter()
 
-# ---- Programa principal ----
-if __name__ == "__main__":
-    np.random.seed(42)  # Para reproducibilidad
-    vacunas = generar_vector_vacunas_np()
+if encontrado:
+    if (2025 - anio_vacunacion) >= 5:
+        print("✅ Búsqueda binaria: Se debe vacunar.")
+    else:
+        print("⛔ Búsqueda binaria: Aún no le toca vacunarse.")
+else:
+    print("❌ Búsqueda binaria: DNI no encontrado.")
 
-    # Leer DNI desde teclado o puedes probar con uno incluido en el array:
-    dni_usuario = int(input("Ingrese el DNI del niño: "))
-
-    comparar_busquedas_np(vacunas, dni_usuario)
+print(f"Tiempo búsqueda con ordenamiento + binaria: {fin2 - inicio2:.6f} segundos")
